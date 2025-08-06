@@ -1,0 +1,5 @@
+![](https://github.com/Hoaxlt/network-org/blob/hw1/Screenshot_1.png)
+![](https://github.com/Hoaxlt/network-org/blob/hw1/Screenshot_2.png)
+![](https://github.com/Hoaxlt/network-org/blob/hw1/Screenshot_3.png)
+![](https://github.com/Hoaxlt/network-org/blob/hw1/Screenshot_4.png)
+![](https://github.com/Hoaxlt/network-org/blob/hw1/Screenshot_5.png)
