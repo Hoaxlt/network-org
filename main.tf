@@ -2,6 +2,18 @@ data "template_file" "cloudinit" {
   template = file("./cloud-init.yaml")
   vars = {
     ssh_public_key      = file(var.ssh_key_path)
+    index = <<-EOF
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>Моя страница</title>
+      </head>
+      <body>
+          <h1>Добро пожаловать!</h1>
+          <img src="https://storage.yandexcloud.net/bigdatabucket/burd.jpg" alt="Моя картинка">
+      </body>
+      </html>
+      EOF
   }
 }
 
@@ -81,11 +93,19 @@ resource "yandex_compute_instance_group" "lamp" {
     max_expansion   = 3
     max_deleting    = 3
   }
-  load_balancer {
+   load_balancer {
     target_group_name = "target-nlb"
   }
+  health_check {
+    interval = 15
+    timeout = 5
+    healthy_threshold = 5
+    unhealthy_threshold = 2
+    http_options {
+      path = "/"
+      port = 80
 }
-
+}
 resource "yandex_lb_network_load_balancer" "nlb" {
   name = "nlb"
   listener {
