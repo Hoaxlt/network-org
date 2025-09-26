@@ -40,13 +40,19 @@ variable "vpc_name" {
   default     = "public"
   description = "VPC network & subnet name"
 }
-variable "lamp_image" {
-  type = string
-  default = "fd827b91d99psvq5fjit"
-}
-variable "lamp_resources" {
-  type = map(any)
-}
+
 variable "service_account" {
+  type = map
+}
+
+variable "sa_key_desc" {
+  type = string
+}
+
+variable "kms_key" {
+  type = map
+}
+
+variable "test_bucket_name" {
   type = string
 }

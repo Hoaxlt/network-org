@@ -10,6 +10,3 @@ users:
 #package_upgrade: false
 packages:
   - vim
-bootcmd:
-  - echo '<p>hostname is:' "$(hostname)" '</p><br><a href="https://storage.yandexcloud.net/bigdatabucket/burd.jpg">Link</a>' >  /var/www/html/index.html
-# - echo ${index} >> /var/www/html/index.html

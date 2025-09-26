@@ -2,18 +2,6 @@ data "template_file" "cloudinit" {
   template = file("./cloud-init.yaml")
   vars = {
     ssh_public_key      = file(var.ssh_key_path)
-    index = <<-EOF
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <title>Моя страница</title>
-      </head>
-      <body>
-          <h1>Добро пожаловать!</h1>
-          <img src="https://storage.yandexcloud.net/bigdatabucket/burd.jpg" alt="Моя картинка">
-      </body>
-      </html>
-      EOF
   }
 }
 
@@ -44,89 +32,41 @@ resource "yandex_vpc_subnet" "public" {
   v4_cidr_blocks = var.default_cidr
 }
 
-data "yandex_compute_image" "lamp" {
-  family = "lamp"
+###-------------------------------
+
+resource "yandex_iam_service_account" "buckets_account" {
+  name        = var.service_account.bucket_account.name
+  description = var.service_account.bucket_account.desc
 }
 
-resource "yandex_compute_instance_group" "lamp" {
-  name                = "test-ig"
-  service_account_id  = var.service_account
-  deletion_protection = false
-  instance_template {
-    platform_id = "standard-v1"
-    resources {
-      memory = var.lamp_resources.memory
-      cores  = var.lamp_resources.cores
-      core_fraction = var.lamp_resources.core_fraction
-    }
-    boot_disk {
-      mode = "READ_WRITE"
-      initialize_params {
-        image_id = data.yandex_compute_image.lamp.id
-        size     = var.lamp_resources.disk_size
-      }
-    }
-    network_interface {
-      network_id = yandex_vpc_network.develop.id
-      subnet_ids = ["${yandex_vpc_subnet.public.id}"]
-      nat       = true
-    }
-    metadata = {
-      user-data = data.template_file.cloudinit.rendered
-      serial-port-enable = 1
-      #ssh-keys = "ubuntu:${file(var.ssh_key_path)}"
-  }
-  }
-  scale_policy {
-    fixed_scale {
-      size = 3
-    }
-  }
-
-  allocation_policy {
-    zones = [var.default_zone]
-  }
-
-  deploy_policy {
-    max_unavailable = 3
-    max_creating    = 3
-    max_expansion   = 3
-    max_deleting    = 3
-  }
-   load_balancer {
-    target_group_name = "target-nlb"
-  }
-  health_check {
-    interval = 15
-    timeout = 5
-    healthy_threshold = 5
-    unhealthy_threshold = 2
-    http_options {
-      path = "/"
-      port = 80
+resource "yandex_resourcemanager_folder_iam_member" "buckets-account-role" {
+  folder_id = var.folder_id
+  role      = var.service_account.bucket_account.role
+  member    = "serviceAccount:${yandex_iam_service_account.buckets_account.id}"
 }
+
+resource "yandex_iam_service_account_static_access_key" "buckets-account-key" {
+  service_account_id = "${yandex_iam_service_account.buckets_account.id}"
+  description        = var.sa_key_desc
 }
-resource "yandex_lb_network_load_balancer" "nlb" {
-  name = "nlb"
-  listener {
-    name = "nlb-listener"
-    port = 80
-    external_address_spec {
-      ip_version = "ipv4"
+
+resource "yandex_kms_symmetric_key" "key-a" {
+  name              = var.kms_key.key_a.name
+  description       = var.kms_key.key_a.desc
+  default_algorithm = var.kms_key.key_a.default_algorithm
+  rotation_period   = var.kms_key.key_a.rotation_period
+}
+
+resource "yandex_storage_bucket" "test" {
+  bucket     = var.test_bucket_name
+  access_key = "${yandex_iam_service_account_static_access_key.buckets-account-key.access_key}"
+  secret_key = "${yandex_iam_service_account_static_access_key.buckets-account-key.secret_key}"
+  server_side_encryption_configuration {
+    rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = yandex_kms_symmetric_key.key-a.id
+      sse_algorithm     = "aws:kms"
     }
   }
-  attached_target_group {
-    target_group_id = yandex_compute_instance_group.lamp.load_balancer.0.target_group_id
-    healthcheck {
-      name = "http"
-      interval = 10
-      timeout = 5
-      healthy_threshold = 5
-      unhealthy_threshold = 2
-      http_options {
-        path = "/"
-        port = 80
-      }
-    }
   }
 }
